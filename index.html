@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GlitrAI Content Engine</title>
+    <style>
+        body { font-family: sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; }
+        .container { display: flex; flex-direction: column; gap: 15px; }
+        input, textarea { padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 5px; }
+        button { padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
+        button:hover { background-color: #0056b3; }
+        #result { margin-top: 20px; padding: 15px; border: 1px solid #eee; border-radius: 5px; display: none; }
+        img { max-width: 100%; border-radius: 5px; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Generate Product Image</h2>
+        <form id="productForm">
+            <input type="text" id="product_name" placeholder="Product Name (e.g., Florentine Bowl)" required>
+            <textarea id="product_description" placeholder="Product Description..." rows="4" required></textarea>
+            <button type="submit" id="submitBtn">Generate Content</button>
+        </form>
+
+        <div id="result">
+            <h3 id="jobStatus"></h3>
+            <p><strong>Job ID:</strong> <span id="jobIdDisplay"></span></p>
+            <p><strong>AI Prompt:</strong> <span id="aiPrompt"></span></p>
+            <img id="resultImg" src="" alt="Generated Product Image">
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('productForm').addEventListener('submit', async function(e) {
+            e.preventDefault(); // Stop page from reloading
+            
+            const btn = document.getElementById('submitBtn');
+            const resultDiv = document.getElementById('result');
+            btn.innerText = "Processing...";
+            btn.disabled = true;
+
+            const payload = {
+                product_name: document.getElementById('product_name').value,
+                product_description: document.getElementById('product_description').value
+            };
+
+            try {
+                // 1. Send data to  Flask /generate endpoint
+                const postResponse = await fetch('http://127.0.0.1:5000/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const postData = await postResponse.json();
+
+                // 2. Fetch the job details using the GET /jobs/:id endpoint
+                const getResponse = await fetch(`http://127.0.0.1:5000/jobs/${postData.job_id}`);
+                const jobData = await getResponse.json();
+
+                // 3. Display the results on the screen
+                document.getElementById('jobIdDisplay').innerText = jobData.id;
+                document.getElementById('jobStatus').innerText = `Status: ${jobData.status.toUpperCase()}`;
+                document.getElementById('aiPrompt').innerText = jobData.prompt;
+                document.getElementById('resultImg').src = jobData.result_url;
+                
+                resultDiv.style.display = "block";
+
+            } catch (error) {
+                alert("Error connecting to server. Is app.py running?");
+                console.error(error);
+            } finally {
+                btn.innerText = "Generate Content";
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
