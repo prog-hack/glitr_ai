@@ -5,76 +5,257 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GlitrAI Content Engine</title>
     <style>
-        body { font-family: sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; }
-        .container { display: flex; flex-direction: column; gap: 15px; }
-        input, textarea { padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 5px; }
-        button { padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
-        button:hover { background-color: #0056b3; }
-        #result { margin-top: 20px; padding: 15px; border: 1px solid #eee; border-radius: 5px; display: none; }
-        img { max-width: 100%; border-radius: 5px; margin-top: 10px; }
+        body {
+            font-family: sans-serif;
+            background-color: #f9f9f9;
+            color: #333;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            margin-top: 0;
+            font-size: 20px;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 10px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .input-group input[type="text"], 
+        .input-group input[type="number"], 
+        .input-group textarea {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .input-group input[type="file"] {
+            font-size: 14px;
+            padding: 5px 0;
+        }
+
+        .input-group textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .input-group button {
+            padding: 12px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+
+        .input-group button:hover {
+            background-color: #0056b3;
+        }
+
+        .input-group button:disabled {
+            background-color: #a0c4ff;
+            cursor: not-allowed;
+        }
+
+        /* Result Section Styles */
+        #result-section {
+            display: none; 
+        }
+
+        .result-content {
+            margin-top: 15px;
+        }
+
+        .result-image {
+            max-width: 100%;
+            border-radius: 4px;
+            margin-top: 10px;
+            border: 1px solid #ddd;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            background-color: #d4edda;
+            color: #155724;
+            margin-bottom: 10px;
+        }
+
+        .error-message {
+            color: #721c24;
+            background-color: #f8d7da;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            display: none;
+        }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h2>Generate Product Image</h2>
-        <form id="productForm">
-            <input type="text" id="product_name" placeholder="Product Name (e.g., Florentine Bowl)" required>
-            <textarea id="product_description" placeholder="Product Description..." rows="4" required></textarea>
-            <button type="submit" id="submitBtn">Generate Content</button>
-        </form>
+<div class="container">
+    
+    <!-- Error Display -->
+    <div id="error-message" class="error-message"></div>
 
-        <div id="result">
-            <h3 id="jobStatus"></h3>
-            <p><strong>Job ID:</strong> <span id="jobIdDisplay"></span></p>
-            <p><strong>AI Prompt:</strong> <span id="aiPrompt"></span></p>
-            <img id="resultImg" src="" alt="Generated Product Image">
+    <!-- Generate Form -->
+    <div class="card">
+        <h2>Generate Product Image</h2>
+        <form id="generate-form" class="input-group">
+            <input type="text" id="product-name" placeholder="Product Name (e.g., Florentine Wooden Salad Bowl)" required />
+            <textarea id="product-description" placeholder="Product Description..." required></textarea>
+            <input type="file" id="product-image" accept="image/*" required />
+            <button type="submit" id="generate-btn">Generate Content</button>
+        </form>
+    </div>
+
+    <!-- Job Lookup Form -->
+    <div class="card">
+        <h2>Check Job Status</h2>
+        <form id="lookup-form" class="input-group" style="flex-direction: row;">
+            <input type="number" id="job-id-input" placeholder="Enter Job ID" required style="flex-grow: 1;" />
+            <button type="submit" style="white-space: nowrap;">Find Job</button>
+        </form>
+    </div>
+
+    <!-- Results Display -->
+    <div id="result-section" class="card">
+        <h2>Result <span id="job-id-display" style="color: #888; font-size: 14px;"></span></h2>
+        <div class="result-content">
+            <span id="job-status" class="status-badge">Completed</span>
+            <p><strong>Prompt Used:</strong> <span id="job-prompt"></span></p>
+            <img id="job-image" class="result-image" src="" alt="Generated Product Image" />
         </div>
     </div>
 
-    <script>
-        document.getElementById('productForm').addEventListener('submit', async function(e) {
-            e.preventDefault(); // Stop page from reloading
-            
-            const btn = document.getElementById('submitBtn');
-            const resultDiv = document.getElementById('result');
-            btn.innerText = "Processing...";
-            btn.disabled = true;
+</div>
 
-            const payload = {
-                product_name: document.getElementById('product_name').value,
-                product_description: document.getElementById('product_description').value
-            };
+<script>
+    // Configuration
+    const API_BASE_URL = 'https://glitr-ai.onrender.com'; 
 
-            try {
-                // 1. Send data to  Flask /generate endpoint
-                const postResponse = await fetch('http://127.0.0.1:5000/generate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                const postData = await postResponse.json();
+    // DOM Elements
+    const generateForm = document.getElementById('generate-form');
+    const lookupForm = document.getElementById('lookup-form');
+    const resultSection = document.getElementById('result-section');
+    const errorDisplay = document.getElementById('error-message');
+    
+    // Result DOM Elements
+    const jobIdDisplay = document.getElementById('job-id-display');
+    const jobStatus = document.getElementById('job-status');
+    const jobPrompt = document.getElementById('job-prompt');
+    const jobImage = document.getElementById('job-image');
+    const generateBtn = document.getElementById('generate-btn');
 
-                // 2. Fetch the job details using the GET /jobs/:id endpoint
-                const getResponse = await fetch(`http://127.0.0.1:5000/jobs/${postData.job_id}`);
-                const jobData = await getResponse.json();
+    // Helper function to show errors
+    function showError(message) {
+        errorDisplay.textContent = message;
+        errorDisplay.style.display = 'block';
+        resultSection.style.display = 'none';
+    }
 
-                // 3. Display the results on the screen
-                document.getElementById('jobIdDisplay').innerText = jobData.id;
-                document.getElementById('jobStatus').innerText = `Status: ${jobData.status.toUpperCase()}`;
-                document.getElementById('aiPrompt').innerText = jobData.prompt;
-                document.getElementById('resultImg').src = jobData.result_url;
-                
-                resultDiv.style.display = "block";
+    // Helper function to display job data
+    function displayJobData(jobData) {
+        errorDisplay.style.display = 'none';
+        resultSection.style.display = 'block';
+        
+        jobIdDisplay.textContent = `(Job #${jobData.job_id || jobData.id})`;
+        jobStatus.textContent = jobData.status.toUpperCase();
+        jobPrompt.textContent = jobData.prompt || "No prompt generated yet.";
+        
+        if (jobData.result_url) {
+            jobImage.src = jobData.result_url;
+            jobImage.style.display = 'block';
+        } else {
+            jobImage.style.display = 'none';
+        }
+    }
 
-            } catch (error) {
-                alert("Error connecting to server. Is app.py running?");
-                console.error(error);
-            } finally {
-                btn.innerText = "Generate Content";
-                btn.disabled = false;
+    // Handle Generation Form Submission
+    generateForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        generateBtn.textContent = "Generating...";
+        generateBtn.disabled = true;
+
+        const formData = new FormData();
+        formData.append('product_name', document.getElementById('product-name').value);
+        formData.append('product_description', document.getElementById('product-description').value);
+        formData.append('product_image', document.getElementById('product-image').files[0]);
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/generate`, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.error || "Failed to generate content.");
             }
-        });
-    </script>
+            
+            const data = await response.json();
+            displayJobData(data);
+
+        } catch (error) {
+            showError(`Error: ${error.message}`);
+            console.error(error);
+        } finally {
+            generateBtn.textContent = "Generate Content";
+            generateBtn.disabled = false;
+        }
+    });
+
+    // Handle Job Lookup Form Submission
+    lookupForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const jobId = document.getElementById('job-id-input').value;
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/jobs/${jobId}`);
+            
+            if (response.status === 404) {
+                showError("Job not found.");
+                return;
+            }
+            if (!response.ok) throw new Error("Failed to fetch job.");
+            
+            const data = await response.json();
+            displayJobData(data);
+
+        } catch (error) {
+            showError("Error connecting to the server.");
+            console.error(error);
+        }
+    });
+</script>
+
 </body>
 </html>

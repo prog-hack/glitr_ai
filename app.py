@@ -9,23 +9,26 @@ CORS(app)
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 def get_db_connection():
-    # connectng to db
+    # connecting to db
     return psycopg2.connect(DATABASE_URL)
     
-# end point 1
-# get/health
+# endpoint 1: /health
 @app.route('/health', methods=['GET'])
 def health_check():
-    # health check end point
+    # health check endpoint
     return jsonify({"status": "healthy"}), 200
 
-# endpoint -2 post/gen
+# endpoint 2: POST /generate
 @app.route('/generate', methods=['POST'])
 def generate_content():
-    # Receives product info, creates a job, and generates output.
-    data = request.get_json()
-    product_name = data.get('product_name')
-    product_description = data.get('product_description')
+    # Receives product info + image via form data
+    product_name = request.form.get('product_name')
+    product_description = request.form.get('product_description')
+    product_image = request.files.get('product_image')
+
+    # Basic validation to ensure all assignment requirements are met
+    if not product_name or not product_description or not product_image:
+        return jsonify({"error": "Missing required fields (name, description, or image)"}), 400
 
     conn = get_db_connection()
     cur = conn.cursor()
@@ -38,7 +41,8 @@ def generate_content():
     job_id = cur.fetchone()[0]
     conn.commit()
 
-    # 2. Turn product info into a prompt & mock image output (as permitted)
+    # 2. Turn product info into a prompt & mock image output 
+    # (The uploaded image is received, but we mock the output as permitted)
     prompt = f"Studio product advertisement of {product_name}: {product_description}"
     placeholder_image = f"https://picsum.photos/seed/{job_id}/400/300"
 
@@ -58,7 +62,7 @@ def generate_content():
         "result_url": placeholder_image
     }), 200
 
-# get/jobid 
+# endpoint 3: GET /jobs/<id>
 @app.route('/jobs/<int:job_id>', methods=['GET'])
 def get_job(job_id):
     """Fetches status and details of a specific job by ID."""
